@@ -13,16 +13,14 @@ class LidarControl:
         fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
         scan_data = np.zeros((360, 2))
         try:
-            for i, scan in enumerate(self.lidar.iter_scans()):
+            for scan in self.lidar.iter_scans():
                 for (_, angle, distance) in scan:
                     scan_data[int(angle)] = (np.radians(angle), distance)
                 ax.clear()
                 ax.set_ylim(0, 6000)
                 ax.plot(scan_data[:, 0], scan_data[:, 1], 'bo')
                 plt.pause(0.001)
-                print('%d: Got %d measurements' % (i, len(scan)))
-                if i > 10:
-                    break
+                print('Got %d measurements' % len(scan))
         except Exception as e:
             print(f"Error during scanning: {e}")
             self.stop_scan()
