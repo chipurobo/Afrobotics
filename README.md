@@ -1,29 +1,27 @@
-# Raspberry Pi Motor Control Project
+# Chipurobo AI Series Documentation
 
-## Overview
-This project is designed to control motors connected to a Raspberry Pi. It provides a foundation for future enhancements, including the integration of computer vision and LiDAR sensor functionalities.
+This repository contains the documentation and code for various applications in the Chipurobo AI series. The applications include motor control, lidar-based obstacle avoidance, and gesture control using Hailo.
 
 ## Project Structure
+
 ```
-raspberry-pi-motor-control
-├── src
-│   ├── motor_control
+chipurobo-ai-series/
+├── src/
+│   ├── motor_control/
 │   │   └── motor_control.py
-│   ├── computer_vision
-│   │   └── computer_vision.py
-│   ├── lidar
+│   ├── lidar/
 │   │   └── lidar_control.py
-│   └── utils
-│       └── __init__.py
-├── requirements.txt
-└── README.md
+│   └── gesture_control/
+│       └── gesture_control.py
+├── README.md
+└── requirements.txt
 ```
 
 ## Setup Instructions
 1. **Clone the repository:**
    ```
    git clone <repository-url>
-   cd raspberry-pi-motor-control
+   cd chipurobo-ai-series
    ```
 
 2. **Install dependencies:**
@@ -38,53 +36,46 @@ raspberry-pi-motor-control
    sudo apt-get install -y python3-picamera2
    ```
 
-## Usage
+## Applications
 
 ### Motor Control
-To control the motors, you will interact with the `MotorControl` class defined in `src/motor_control/motor_control.py`. This class provides methods to start and stop the motors, as well as to set their speed.
 
-#### Example
-```python
-from motor_control.motor_control import MotorControl
+The motor control application uses GPIO pins to control the motors of a robot. The script `motor_control.py` is responsible for moving the motors forward and stopping them based on lidar input.
 
-motor = MotorControl()
-motor.start_motor()
-motor.set_speed(50)
-motor.stop_motor()
+#### Running the Motor Control Script
+
+```sh
+python -m src.motor_control.motor_control
 ```
 
-### Computer Vision
-To capture and process images using the AI camera, you will interact with the `ComputerVision` class defined in `src/computer_vision/computer_vision.py`.
+### Lidar-Based Obstacle Avoidance
 
-#### Example
-```python
-from computer_vision.computer_vision import ComputerVision
+The lidar-based obstacle avoidance application uses an RPLidar to detect obstacles and stop the motors when an obstacle is detected within a certain distance.
 
-cv = ComputerVision()
-image = cv.capture_image()
-processed_image = cv.process_image(image)
-cv.display_image(processed_image)
+#### Running the Lidar Control Script
+
+```sh
+python -m src.lidar.lidar_control
 ```
 
-### LiDAR Control
-To start scanning with the LiDAR sensor, you will interact with the `LidarControl` class defined in `src/lidar/lidar_control.py`.
+### Gesture Control Using Hailo
 
-#### Example
-```python
-from lidar.lidar_control import LidarControl
+The gesture control application uses the Hailo AI processor to recognize gestures and control the robot based on the recognized gestures.
 
-lidar_control = LidarControl(port='/dev/ttyUSB0')
-try:
-    lidar_control.start_scan()
-except KeyboardInterrupt:
-    print("Stopping scan...")
-finally:
-    lidar_control.stop_scan()
+#### Running the Gesture Control Script
+
+```sh
+python -m src.gesture_control.gesture_control
 ```
 
-## Future Plans
-- **Computer Vision Integration:** Develop functionalities to enable the Raspberry Pi to process visual data, which could include object detection and tracking.
-- **LiDAR Sensor Integration:** Implement features to utilize LiDAR data for mapping and navigation purposes.
+## Requirements
 
-## Contributing
-Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
+Make sure to install the required libraries before running the scripts. You can install the dependencies using the following command:
+
+```sh
+pip install -r requirements.txt
+```
+
+## License
+
+This project is licensed under the MIT License.
