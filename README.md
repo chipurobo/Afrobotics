@@ -68,44 +68,44 @@ The gesture control application uses the Hailo AI processor to recognize gesture
 python -m src.gesture_control.gesture_control
 ```
 
-## Code Breakdown
+#### Code Breakdown
 
-### Imported Libraries
+##### Imported Libraries
 
-#### General Purpose Libraries
+###### General Purpose Libraries
 - **`threading` and `queue`**: Used for running pose estimation in a separate thread and managing wrist position updates.
 - **`random`**: Generates random brick spawn positions.
 - **`math`**: Provides mathematical operations (though unused here).
 
-#### Gaming Framework
+###### Gaming Framework
 - **`pygame`**: For creating the game window, handling events, and rendering graphics.
 
-#### Pose Estimation
+###### Pose Estimation
 - **`gi` and `Gst`**: For managing multimedia pipelines via GStreamer.
 - **`hailo` and `hailo_rpi_common`**: For pose detection and landmarks extraction using Hailo's SDK.
 
-#### Helper Libraries
+###### Helper Libraries
 - **`numpy`**: Efficient numerical operations.
 - **`collections.namedtuple`**: For defining simple game objects like `Player`, `Bullet`, and `Brick`.
 
 ---
 
-### Constants
+##### Constants
 
-#### Game Constants
+###### Game Constants
 - **Window and FPS**: Dimensions (`WINDOW_WIDTH`/`WINDOW_HEIGHT`) and refresh rate (`FPS`).
 - **Object Dimensions and Speeds**: Sizes and velocities of the player, bullets, and bricks.
 - **Spawn Rate**: Determines how frequently bricks spawn.
 - **Lives**: Number of lives the player starts with.
 - **Position Queue Size**: Capacity for storing wrist position updates.
 
-#### Colors
+###### Colors
 Common RGB tuples:
 - White, Red, Green, Blue, and Black.
 
 ---
 
-### Game Objects
+##### Game Objects
 Defined using `namedtuple` for simplicity and immutability:
 - **`Player`**: Paddle position and dimensions.
 - **`Bullet`**: Bullet position, dimensions, and velocity.
@@ -113,22 +113,22 @@ Defined using `namedtuple` for simplicity and immutability:
 
 ---
 
-### Pose Estimation
+##### Pose Estimation
 
-#### Pose Shooter Callback
+###### Pose Shooter Callback
 - Handles the communication between the pose estimation pipeline and the game logic.
 - Tracks default wrist positions and updates a queue for real-time paddle control.
 
-#### Pose Shooter Class
+###### Pose Shooter Class
 
-##### Initialization
+###### Initialization
 1. **Game Setup**: Creates the game window, initializes paddle position, and resets the game state.
 2. **Pose Estimation**: Sets up callbacks to process wrist positions for paddle movement.
 
-##### Reset Game
+###### Reset Game
 - Resets player position, score, lives, and clears bullets and bricks for a fresh session.
 
-#### Pose Estimation Callback
+###### Pose Estimation Callback
 1. Processes buffer data from the GStreamer pipeline.
 2. Extracts ROI and landmarks.
 3. Normalizes wrist positions relative to the frame height.
@@ -136,52 +136,52 @@ Defined using `namedtuple` for simplicity and immutability:
 
 ---
 
-### Game Logic
+##### Game Logic
 
-#### Brick Spawning
+###### Brick Spawning
 - **`spawn_brick()`**: Generates bricks at random x-coordinates with fixed velocity.
 
-#### Updating Game Elements
+###### Updating Game Elements
 - **Bricks**: Move downward and deduct a life if they fall out of bounds.
 - **Bullets**: Move upward and are removed when out of bounds.
 - **Collisions**: Detects bullet-brick collisions, increasing the score when a hit occurs.
 
-#### Player Movement
+###### Player Movement
 - **`update_player()`**: Updates the paddle's position based on the average x-coordinate of the player's wrists.
 
 ---
 
-### Rendering
+##### Rendering
 
-#### Draw Function
+###### Draw Function
 - Clears the screen.
 - Renders the player, bullets, bricks, score, and remaining lives.
 
 ---
 
-### Pose Estimation and Game Loop
+##### Pose Estimation and Game Loop
 
-#### Pose Estimation Thread
+###### Pose Estimation Thread
 - Runs the pose estimation pipeline separately to ensure smooth gameplay.
 
-#### Game Loop
+###### Game Loop
 Handles:
 - Event processing (e.g., quitting the game).
 - Spawning and updating game objects.
 - Rendering frames.
 - Maintaining the FPS.
 
-#### Game Over Handling
+###### Game Over Handling
 - Resets the game state when all lives are lost.
 
 ---
 
-### Cleanup
+##### Cleanup
 - Releases resources such as the Pygame window and the pose estimation pipeline when the game exits.
 
 ---
 
-### Main Function
+##### Main Function
 - Initializes the `PoseShooter` class and starts the game using the `run()` method.
 
 ---
