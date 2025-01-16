@@ -121,11 +121,11 @@ Defined using `namedtuple` for simplicity and immutability:
 
 ###### Pose Shooter Class
 
-####### Initialization
+###### Initialization
 1. **Game Setup**: Creates the game window, initializes paddle position, and resets the game state.
 2. **Pose Estimation**: Sets up callbacks to process wrist positions for paddle movement.
 
-####### Reset Game
+###### Reset Game
 - Resets player position, score, lives, and clears bullets and bricks for a fresh session.
 
 ###### Pose Estimation Callback
