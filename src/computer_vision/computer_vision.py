@@ -3,123 +3,169 @@ import sys
 import time
 import cv2
 import numpy as np
-import subprocess
-from picamera2 import Picamera2, Preview, CompletedRequest, MappedArray
+from picamera2 import Picamera2, MappedArray, CompletedRequest
 from picamera2.devices import IMX500
-from picamera2.devices.imx500.postprocess import softmax
+from picamera2.devices.imx500 import NetworkIntrinsics
+from gpiozero import Motor, PWMOutputDevice
 
-class ComputerVision:
-    def __init__(self, model_file="path/to/model/file", camera_num=0):
+
+class RobotFollower:
+    def __init__(self, model_file, camera_num=0):
         self.imx500 = IMX500(model_file)
-        self.intrinsics = self.imx500.network_intrinsics
-        if not self.intrinsics:
-            self.intrinsics = self.imx500.NetworkIntrinsics()
-            self.intrinsics.task = "classification"
-        elif self.intrinsics.task != "classification":
-            print("Network is not a classification task", file=sys.stderr)
-            exit()
+        self.intrinsics = self.imx500.network_intrinsics or NetworkIntrinsics()
+        self.intrinsics.task = "object detection"
 
         self.picam2 = Picamera2(camera_num=camera_num)
-        config = self.picam2.create_preview_configuration(controls={"FrameRate": self.intrinsics.inference_rate}, buffer_count=12)
+        config = self.picam2.create_preview_configuration(
+            main={"format": "XRGB8888"},  # ✅ Fixed preview crash
+            controls={"FrameRate": self.intrinsics.inference_rate},
+            buffer_count=12
+        )
         self.picam2.start(config, show_preview=True)
         if self.intrinsics.preserve_aspect_ratio:
             self.imx500.set_auto_aspect_ratio()
-        self.picam2.pre_callback = self.parse_and_draw_classification_results
 
-    def capture_image(self):
-        frame = self.picam2.capture_array()
-        return frame
+        self.labels = self._load_labels()
 
-    def process_image(self, image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edges = cv2.Canny(blurred, 50, 150)
-        return edges
+        # Setup motors
+        self.motor_a = Motor(forward=17, backward=27)
+        self.motor_b = Motor(forward=22, backward=23)
+        self.enable_a = PWMOutputDevice(24, frequency=1000)
+        self.enable_b = PWMOutputDevice(25, frequency=1000)
+        self.stop_motors()
 
-    def parse_and_draw_classification_results(self, request: CompletedRequest):
-        results = self.parse_classification_results(request)
-        self.draw_classification_results(request, results)
+    def _load_labels(self):
+        if self.intrinsics.labels is None:
+            with open("assets/coco_labels.txt", "r") as f:
+                self.intrinsics.labels = f.read().splitlines()
+        return self.intrinsics.labels
 
-    def parse_classification_results(self, request: CompletedRequest):
-        np_outputs = self.imx500.get_outputs(request.get_metadata())
-        if np_outputs is None:
+    def stop_motors(self):
+        print("[STOP] Motors")
+        self.motor_a.stop()
+        self.motor_b.stop()
+        self.enable_a.value = 0
+        self.enable_b.value = 0
+
+    def move_robot(self, left_speed, right_speed):
+        self.enable_a.value = left_speed
+        self.enable_b.value = right_speed
+        self.motor_a.forward()
+        self.motor_b.forward()
+        print(f"[MOVE] L={left_speed:.2f}, R={right_speed:.2f}")
+
+    def get_detections(self, request):
+        try:
+            metadata = request.get_metadata()
+            outputs = self.imx500.get_outputs(metadata, add_batch=True)
+            if outputs is None:
+                return []
+            boxes, scores, classes = outputs[0][0], outputs[1][0], outputs[2][0]
+            return [
+                {
+                    "box": self.imx500.convert_inference_coords(b, metadata, self.picam2),
+                    "score": s,
+                    "class_id": int(c)
+                }
+                for b, s, c in zip(boxes, scores, classes)
+                if s >= 0.5 and self.labels[int(c)] == "person"
+            ]
+        except Exception as e:
+            print(f"[ERROR] get_detections: {e}")
             return []
-        np_output = np_outputs[0]
-        if self.intrinsics.softmax:
-            np_output = softmax(np_output)
-        top_indices = np.argpartition(-np_output, 3)[:3]
-        top_indices = top_indices[np.argsort(-np_output[top_indices])]
-        return [self.Classification(index, np_output[index]) for index in top_indices]
 
-    class Classification:
-        def __init__(self, idx: int, score: float):
-            self.idx = idx
-            self.score = score
+    def draw_and_control(self, request: CompletedRequest):
+        try:
+            detections = self.get_detections(request)
+            if not detections:
+                self.stop_motors()
+                return
 
-    def draw_classification_results(self, request: CompletedRequest, results, stream="main"):
-        with MappedArray(request, stream) as m:
-            if self.intrinsics.preserve_aspect_ratio:
-                b_x, b_y, b_w, b_h = self.imx500.get_roi_scaled(request)
-                cv2.putText(m.array, "ROI", (b_x + 5, b_y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
-                cv2.rectangle(m.array, (b_x, b_y), (b_x + b_w, b_y + b_h), (255, 0, 0, 0))
-                text_left, text_top = b_x, b_y + 20
-            else:
-                text_left, text_top = 0, 0
-            for index, result in enumerate(results):
-                label = self.get_label(request, idx=result.idx)
-                text = f"{label}: {result.score:.3f}"
-                (text_width, text_height), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-                text_x = text_left + 5
-                text_y = text_top + 15 + index * 20
+            best = max(detections, key=lambda d: d["box"][2] * d["box"][3], default=None)
+            if not best:
+                self.stop_motors()
+                return
+
+            x, y, w, h = map(int, best["box"])
+            if h < 40 or w < 20:
+                print("[WARN] Small person box ignored.")
+                self.stop_motors()
+                return
+
+            with MappedArray(request, "main") as m:
+                frame_h, frame_w = m.array.shape[:2]
+                label = f"person ({best['score']:.2f})"
                 overlay = m.array.copy()
-                cv2.rectangle(overlay, (text_x, text_y - text_height), (text_x + text_width, text_y + baseline), (255, 255, 255), cv2.FILLED)
+                (tw, th), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+                text_x, text_y = x + 5, y + 15
+                cv2.rectangle(overlay, (text_x, text_y - th), (text_x + tw, text_y + baseline), (255, 255, 255), -1)
                 alpha = 0.3
                 cv2.addWeighted(overlay, alpha, m.array, 1 - alpha, 0, m.array)
-                cv2.putText(m.array, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                cv2.putText(m.array, label, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                cv2.rectangle(m.array, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-    def get_label(self, request: CompletedRequest, idx: int):
-        if self.intrinsics.labels is None:
-            with open("assets/imagenet_labels.txt", "r") as f:
-                self.intrinsics.labels = f.read().splitlines()
-        return self.intrinsics.labels[idx]
+            # Control logic
+            frame_center = frame_w // 2
+            person_center_x = x + w // 2
+            error_x = (frame_center - person_center_x) / frame_center
+            distance_error = 1.0 - min(h / frame_h, 1.0)
 
-    def display_image(self, image):
-        cv2.imshow("Image", image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+            if distance_error < 0.05:
+                print("[INFO] Too close.")
+                self.stop_motors()
+                return
 
-    def run_rpicam_hello(self):
-        command = [
-            "rpicam-hello",
-            "-t", "0s",
-            "--post-process-file", "/usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json",
-            "--viewfinder-width", "1920",
-            "--viewfinder-height", "1080",
-            "--framerate", "30"
-        ]
-        subprocess.run(command)
+            MIN_SPEED = 0.55
+            MAX_SPEED = 1.0
+
+            # === NEW TURN-IN-PLACE LOGIC ===
+            if abs(error_x) > 0.7:
+                print("[TURN] Person far off-center. Rotating in place.")
+                if error_x > 0:
+                    left_speed = MIN_SPEED
+                    right_speed = MAX_SPEED
+                else:
+                    left_speed = MAX_SPEED
+                    right_speed = MIN_SPEED
+            else:
+                # Smooth gain-based steering
+                steering_gain = 1.2
+                steering = np.clip(error_x * steering_gain, -0.6, 0.6)
+                forward = np.clip(distance_error * 0.6, 0.0, 1.0)
+
+                left_speed = np.clip(forward + steering, MIN_SPEED, MAX_SPEED)
+                right_speed = np.clip(forward - steering, MIN_SPEED, MAX_SPEED)
+
+            self.move_robot(left_speed, right_speed)
+        except Exception as e:
+            print(f"[ERROR] draw_and_control: {e}")
+            self.stop_motors()
+
+    def run(self):
+        try:
+            while True:
+                request = self.picam2.capture_request()
+                self.draw_and_control(request)
+                request.release()
+        except KeyboardInterrupt:
+            print("Interrupted.")
+        finally:
+            self.stop_motors()
+            self.picam2.stop()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, help="Path of the model", default="/usr/share/imx500-models/imx500_network_mobilenet_v2.rpk")
-    parser.add_argument("--fps", type=int, help="Frames per second")
-    parser.add_argument("-s", "--softmax", action=argparse.BooleanOptionalAction, help="Add post-process softmax")
-    parser.add_argument("-r", "--preserve-aspect-ratio", action=argparse.BooleanOptionalAction, help="Preprocess the image with preserve aspect ratio")
-    parser.add_argument("--labels", type=str, help="Path to the labels file")
-    parser.add_argument("--print-intrinsics", action="store_true", help="Print JSON network_intrinsics then exit")
-    parser.add_argument("--camera-num", type=int, help="Camera number", default=0)
+    parser.add_argument("--model", type=str, default="/usr/share/imx500-models/imx500_network_ssd_mobilenetv2_fpnlite_320x320_pp.rpk")
+    parser.add_argument("--camera-num", type=int, default=0)
+    parser.add_argument("-r", "--preserve-aspect-ratio", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--labels", type=str, help="Path to custom labels")
+    parser.add_argument("--print-intrinsics", action="store_true")
     args = parser.parse_args()
 
-    cv = ComputerVision(model_file=args.model, camera_num=args.camera_num)
+    robot = RobotFollower(model_file=args.model, camera_num=args.camera_num)
     if args.print_intrinsics:
-        print(cv.intrinsics)
-        exit()
+        print(robot.intrinsics)
+        sys.exit(0)
 
-    cv.run_rpicam_hello()
-
-    image = cv.capture_image()
-    processed_image = cv.process_image(image)
-    cv.display_image(processed_image)
-
-    while True:
-        time.sleep(0.5)
+    robot.run()
