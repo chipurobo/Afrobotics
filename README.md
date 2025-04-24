@@ -1,199 +1,105 @@
-# Chipurobo AI Series Documentation
+# 🤖 Afrobotics: African Robotics Learning Platform
 
-This repository contains the documentation and code for various applications in the Chipurobo AI series. The applications include motor control, lidar-based obstacle avoidance, and gesture control using Hailo.
+_A modular, AI-enabled, person-following robot with a robotic arm, built for secondary and technical school students across Africa._
 
-## Project Structure
+---
 
-```
-chipurobo-ai-series/
-├── src/
-│   ├── motor_control/
-│   │   └── motor_control.py
-│   ├── lidar/
-│   │   └── lidar_control.py
-│   └── gesture_control/
-│       └── gesture_control.py
+## 📦 Project Overview
+
+**Afrobotics** is an open-source robotics education initiative designed to teach real-world robotics, computer vision, and control systems using **accessible hardware** and a **hands-on curriculum**.
+
+Students will build a mobile robot powered by a **Raspberry Pi**, a **Bluetooth Xbox controller**, and a **3-DOF robotic arm**, capable of **tracking and interacting** with the environment using an onboard camera and AI.
+
+> 🔧 Designed for classrooms, clubs, and community STEM programs.
+
+---
+
+## 🎯 Learning Outcomes
+
+By completing this project, students will:
+
+- Wire and program a robot using a Raspberry Pi
+- Understand motor control and power distribution
+- Use computer vision to track and follow people
+- Build and operate a 3DOF robotic arm
+- Control the robot wirelessly with an Xbox controller
+- Design and compete in field-based robotics challenges
+
+---
+
+## 📚 Curriculum Modules
+
+| Module | Title                          | Description                                 |
+|--------|--------------------------------|---------------------------------------------|
+| 00     | 📘 Project Introduction         | Goals, setup, and hardware overview         |
+| 01     | 📷 Camera + Raspberry Pi Setup | Install camera and test image capture       |
+| 02     | ⚙️ Drive Motor Control         | Wiring and driving using L298N              |
+| 03     | 🎮 Xbox Controller Integration | Connect and test manual driving             |
+| 04     | 🧠 Person-Following AI         | Add OpenCV-based vision tracking            |
+| 05     | 🦾 Robotic Arm (3DOF)          | Attach and control servos with PCA9685      |
+| 06     | 🎯 Field Challenges            | Design tasks like pick-and-place and follow |
+| 07     | 🚀 Final Integration           | Bring all systems together for demo         |
+
+Find all `.pdf` guides in the `curriculum/` folder.
+
+---
+
+## 🧠 Project Features
+
+- Raspberry Pi 5 control with OpenCV and Python
+- Person-tracking AI using onboard camera
+- Wireless control via Bluetooth Xbox controller
+- 3-DOF robotic arm (base, shoulder, gripper)
+- L298N motor driver + PWM control
+- Modular open field design for activities
+
+---
+
+## 🔌 Electronics Bill of Materials
+
+| Component                         | Qty |
+|----------------------------------|-----|
+| Raspberry Pi 5 (4GB or 8GB)      | 1   |
+| Raspberry Pi Camera (v2 or v3)   | 1   |
+| Xbox Wireless Controller (Bluetooth) | 1 |
+| L298N Motor Driver               | 1   |
+| DC Motors (12V)                  | 2   |
+| PCA9685 PWM Servo Driver         | 1   |
+| Servo Motors (MG90S/MG996R)      | 3   |
+| 5V 3A–5A BEC / Buck Converter    | 1   |
+| 12V Li-ion/Li-Po Battery Pack    | 1   |
+| Jumper Wires, Capacitor (1000uF) | —   |
+
+📎 See `docs/bom.pdf` for the printable parts list.
+
+---
+
+## 🛠️ Software Stack
+
+- Python 3 (preinstalled on Raspberry Pi OS)
+- OpenCV (`cv2`) for vision tracking
+- `gpiozero` for motor control
+- `pygame` or `evdev` for gamepad input
+- `adafruit-circuitpython-pca9685` for arm servos
+
+> All install instructions are inside each module guide.
+
+---
+
+## 🧭 Project Folder Structure
+
+```bash
+afrobotics/
 ├── README.md
-└── requirements.txt
-```
-
-## Setup Instructions
-1. **Clone the repository:**
-   ```
-   git clone <repository-url>
-   cd chipurobo-ai-series
-   ```
-
-2. **Install dependencies:**
-   Ensure you have Python and pip installed, then run:
-   ```
-   pip install -r requirements.txt
-   ```
-
-3. **Install additional packages for the AI camera:**
-   ```
-   sudo apt-get update
-   sudo apt-get install -y python3-picamera2
-   ```
-
-## Applications
-
-### Motor Control
-
-The motor control application uses GPIO pins to control the motors of a robot. The script `motor_control.py` is responsible for moving the motors forward and stopping them based on lidar input.
-
-#### Running the Motor Control Script
-
-```sh
-python -m src.motor_control.motor_control
-```
-
-### Lidar-Based Obstacle Avoidance
-
-The lidar-based obstacle avoidance application uses an RPLidar to detect obstacles and stop the motors when an obstacle is detected within a certain distance.
-
-#### Running the Lidar Control Script
-
-```sh
-python -m src.lidar.lidar_control
-```
-
-### Gesture Control Using Hailo
-
-The gesture control application uses the Hailo AI processor to recognize gestures and control the robot based on the recognized gestures.
-
-#### Running the Gesture Control Script
-
-```sh
-python -m src.gesture_control.gesture_control
-```
-
-#### Code Breakdown
-
-##### Imported Libraries
-
-###### General Purpose Libraries
-- **`threading` and `queue`**: Used for running pose estimation in a separate thread and managing wrist position updates.
-- **`random`**: Generates random brick spawn positions.
-- **`math`**: Provides mathematical operations (though unused here).
-
-###### Gaming Framework
-- **`pygame`**: For creating the game window, handling events, and rendering graphics.
-
-###### Pose Estimation
-- **`gi` and `Gst`**: For managing multimedia pipelines via GStreamer.
-- **`hailo` and `hailo_rpi_common`**: For pose detection and landmarks extraction using Hailo's SDK.
-
-###### Helper Libraries
-- **`numpy`**: Efficient numerical operations.
-- **`collections.namedtuple`**: For defining simple game objects like `Player`, `Bullet`, and `Brick`.
-
----
-
-##### Constants
-
-###### Game Constants
-- **Window and FPS**: Dimensions (`WINDOW_WIDTH`/`WINDOW_HEIGHT`) and refresh rate (`FPS`).
-- **Object Dimensions and Speeds**: Sizes and velocities of the player, bullets, and bricks.
-- **Spawn Rate**: Determines how frequently bricks spawn.
-- **Lives**: Number of lives the player starts with.
-- **Position Queue Size**: Capacity for storing wrist position updates.
-
-###### Colors
-Common RGB tuples:
-- White, Red, Green, Blue, and Black.
-
----
-
-##### Game Objects
-Defined using `namedtuple` for simplicity and immutability:
-- **`Player`**: Paddle position and dimensions.
-- **`Bullet`**: Bullet position, dimensions, and velocity.
-- **`Brick`**: Brick position, dimensions, and velocity.
-
----
-
-##### Pose Estimation
-
-###### Pose Shooter Callback
-- Handles the communication between the pose estimation pipeline and the game logic.
-- Tracks default wrist positions and updates a queue for real-time paddle control.
-
-###### Pose Shooter Class
-
-###### Initialization
-1. **Game Setup**: Creates the game window, initializes paddle position, and resets the game state.
-2. **Pose Estimation**: Sets up callbacks to process wrist positions for paddle movement.
-
-###### Reset Game
-- Resets player position, score, lives, and clears bullets and bricks for a fresh session.
-
-###### Pose Estimation Callback
-1. Processes buffer data from the GStreamer pipeline.
-2. Extracts ROI and landmarks.
-3. Normalizes wrist positions relative to the frame height.
-4. Updates the position queue for paddle control.
-
----
-
-##### Game Logic
-
-###### Brick Spawning
-- **`spawn_brick()`**: Generates bricks at random x-coordinates with fixed velocity.
-
-###### Updating Game Elements
-- **Bricks**: Move downward and deduct a life if they fall out of bounds.
-- **Bullets**: Move upward and are removed when out of bounds.
-- **Collisions**: Detects bullet-brick collisions, increasing the score when a hit occurs.
-
-###### Player Movement
-- **`update_player()`**: Updates the paddle's position based on the average x-coordinate of the player's wrists.
-
----
-
-##### Rendering
-
-###### Draw Function
-- Clears the screen.
-- Renders the player, bullets, bricks, score, and remaining lives.
-
----
-
-##### Pose Estimation and Game Loop
-
-###### Pose Estimation Thread
-- Runs the pose estimation pipeline separately to ensure smooth gameplay.
-
-###### Game Loop
-Handles:
-- Event processing (e.g., quitting the game).
-- Spawning and updating game objects.
-- Rendering frames.
-- Maintaining the FPS.
-
-###### Game Over Handling
-- Resets the game state when all lives are lost.
-
----
-
-##### Cleanup
-- Releases resources such as the Pygame window and the pose estimation pipeline when the game exits.
-
----
-
-##### Main Function
-- Initializes the `PoseShooter` class and starts the game using the `run()` method.
-
----
-
-## Requirements
-
-Make sure to install the required libraries before running the scripts. You can install the dependencies using the following command:
-
-```sh
-pip install -r requirements.txt
-```
-
-## License
-
-This project is licensed under the MIT License.
+├── curriculum/               # Step-by-step learning modules (.pdf)
+├── docs/                     # BOM, schematics, guides
+├── hardware/                 # Wiring diagrams, 3D files
+├── code/
+│   ├── main.py               # Main robot control loop
+│   ├── control/
+│   │   ├── gamepad.py
+│   │   └── bluetooth_gamepad.py
+│   └── hardware/
+│       ├── arm.py
+│       ├── motors.py
+│       └── pca9685_setup.py
